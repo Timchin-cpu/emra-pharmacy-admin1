@@ -4,27 +4,47 @@ import { Plus, Edit, Trash2, Search, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ProductForm from '../components/ProductForm'
 
+// Универсальный парсер — API может вернуть массив, объект с items/data/products
+function parseList(raw) {
+  if (Array.isArray(raw)) return raw
+  if (!raw) return []
+  if (Array.isArray(raw.items))    return raw.items
+  if (Array.isArray(raw.data))     return raw.data
+  if (Array.isArray(raw.products)) return raw.products
+  if (Array.isArray(raw.results))  return raw.results
+  return []
+}
+
 export default function Products() {
-  const [products, setProducts]   = useState([])
+  const [products, setProducts]     = useState([])
   const [categories, setCategories] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [showForm, setShowForm]   = useState(false)
-  const [editing, setEditing]     = useState(null)
-  const [search, setSearch]       = useState('')
-  const [catFilter, setCatFilter] = useState('')
+  const [loading, setLoading]       = useState(true)
+  const [showForm, setShowForm]     = useState(false)
+  const [editing, setEditing]       = useState(null)
+  const [search, setSearch]         = useState('')
+  const [catFilter, setCatFilter]   = useState('')
 
   useEffect(() => {
     window.scrollTo(0, 0)
     load()
-    categoriesAPI.getAll().then(({ data }) => setCategories(data.data || []))
+    categoriesAPI.getAll()
+      .then(({ data }) => setCategories(parseList(data?.data ?? data)))
+      .catch(() => {})
   }, [])
 
   const load = async () => {
     try {
       const { data } = await productsAPI.getAll()
-      setProducts(data.data || [])
-    } catch { toast.error('Ошибка загрузки товаров') }
-    finally { setLoading(false) }
+      // data может быть: { data: [...] } или { data: { items: [...] } } или просто [...]
+      const list = parseList(data?.data ?? data)
+      setProducts(list)
+    } catch (err) {
+      console.error('Products load error:', err)
+      toast.error('Ошибка загрузки товаров')
+      setProducts([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleDelete = async (id, name) => {
@@ -35,9 +55,6 @@ export default function Products() {
       load()
     } catch { toast.error('Ошибка удаления') }
   }
-
-  const handleEdit = (p) => { setEditing(p); setShowForm(true) }
-  const handleCreate = () => { setEditing(null); setShowForm(true) }
 
   const filtered = products.filter(p => {
     const q = search.toLowerCase()
@@ -58,7 +75,7 @@ export default function Products() {
             <span className="stat-item">Активных: <strong>{products.filter(p => p.isActive).length}</strong></span>
           </div>
         </div>
-        <button className="btn btn-primary" onClick={handleCreate}>
+        <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true) }}>
           <Plus size={16} /> Добавить товар
         </button>
       </div>
@@ -126,7 +143,11 @@ export default function Products() {
                     <td className="hide-mobile"><code>{p.sku}</code></td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{p.price} ₸</div>
-                      {p.oldPrice && <div style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.oldPrice} ₸</div>}
+                      {p.oldPrice && (
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {p.oldPrice} ₸
+                        </div>
+                      )}
                     </td>
                     <td className="hide-mobile">
                       <span className={`badge ${p.stock > 10 ? 'badge-success' : p.stock > 0 ? 'badge-warning' : 'badge-danger'}`}>
@@ -140,10 +161,18 @@ export default function Products() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button className="btn btn-outline btn-icon" onClick={() => handleEdit(p)} title="Редактировать">
+                        <button
+                          className="btn btn-outline btn-icon"
+                          onClick={() => { setEditing(p); setShowForm(true) }}
+                          title="Редактировать"
+                        >
                           <Edit size={15} />
                         </button>
-                        <button className="btn btn-danger btn-icon" onClick={() => handleDelete(p.id, p.name)} title="Удалить">
+                        <button
+                          className="btn btn-danger btn-icon"
+                          onClick={() => handleDelete(p.id, p.name)}
+                          title="Удалить"
+                        >
                           <Trash2 size={15} />
                         </button>
                       </div>
