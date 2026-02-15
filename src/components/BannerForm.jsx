@@ -41,23 +41,26 @@ export default function BannerForm({ banner, onClose, onSuccess }) {
     setLoading(true)
 
     try {
-      // Формируем payload явно — subtitle всегда включён
-      const payload = {
-        title:        formData.title.trim(),
-        subtitle:     formData.subtitle.trim() || null,
-        image:        formData.image.trim() || 'https://via.placeholder.com/1200x400?text=Banner',
-        link:         formData.link.trim() || null,
-        isActive:     formData.isActive,
-        displayOrder: parseInt(formData.displayOrder) || 0,
+      // Сервер использует upload.single('image') — нужен FormData
+      const fd = new FormData()
+      fd.append('title',        formData.title.trim())
+      fd.append('subtitle',     formData.subtitle.trim())
+      fd.append('link',         formData.link.trim())
+      fd.append('isActive',     formData.isActive)
+      fd.append('displayOrder', parseInt(formData.displayOrder) || 0)
+
+      // image — если это URL (не File), тоже отправляем как строку
+      if (formData.image instanceof File) {
+        fd.append('image', formData.image)
+      } else if (formData.image) {
+        fd.append('image', formData.image.trim())
       }
 
-      console.log('Banner payload:', payload) // для отладки
-
       if (banner) {
-        await bannersAPI.update(banner.id, payload)
+        await bannersAPI.update(banner.id, fd)
         toast.success('Баннер обновлён!')
       } else {
-        await bannersAPI.create(payload)
+        await bannersAPI.create(fd)
         toast.success('Баннер создан!')
       }
 
