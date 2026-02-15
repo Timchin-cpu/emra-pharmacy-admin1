@@ -7,25 +7,33 @@ import BannerImageUpload from './BannerImageUpload'
 export default function BannerForm({ banner, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    title: '', image: '', linkType: 'NONE', linkValue: '', position: 0, isActive: true,
+    title: '',
+    subtitle: '',
+    image: '',
+    link: '',
+    isActive: true,
+    displayOrder: 0,
   })
 
   useEffect(() => {
     if (banner) {
       setFormData({
-        title: banner.title || '',
-        image: banner.image || '',
-        linkType: banner.linkType || 'NONE',
-        linkValue: banner.linkValue || '',
-        position: banner.position || 0,
-        isActive: banner.isActive ?? true,
+        title:        banner.title        || '',
+        subtitle:     banner.subtitle     || '',
+        image:        banner.image        || '',
+        link:         banner.link         || '',
+        isActive:     banner.isActive     ?? true,
+        displayOrder: banner.displayOrder ?? 0,
       })
     }
   }, [banner])
 
-  const set = (e) => {
+  const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData(p => ({ ...p, [name]: type === 'checkbox' ? checked : value }))
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
   }
 
   const handleSubmit = async (e) => {
@@ -33,13 +41,14 @@ export default function BannerForm({ banner, onClose, onSuccess }) {
     setLoading(true)
     try {
       const data = {
-        title: formData.title,
-        image: formData.image || 'https://via.placeholder.com/1200x400?text=Banner',
-        linkType: formData.linkType,
-        linkValue: formData.linkType === 'NONE' ? null : (formData.linkValue || null),
-        position: parseInt(formData.position) || 0,
-        isActive: formData.isActive,
+        title:        formData.title,
+        subtitle:     formData.subtitle || null,
+        image:        formData.image || 'https://via.placeholder.com/1200x400?text=Banner',
+        link:         formData.link || null,
+        isActive:     formData.isActive,
+        displayOrder: parseInt(formData.displayOrder) || 0,
       }
+
       if (banner) {
         await bannersAPI.update(banner.id, data)
         toast.success('Баннер обновлён!')
@@ -49,77 +58,102 @@ export default function BannerForm({ banner, onClose, onSuccess }) {
       }
       onSuccess()
       onClose()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Ошибка сохранения')
-    } finally { setLoading(false) }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Ошибка сохранения баннера')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-md">
-        <div className="modal-header">
-          <h2 className="modal-title">{banner ? 'Редактировать баннер' : 'Создать баннер'}</h2>
-          <button className="modal-close" onClick={onClose}><X size={20} /></button>
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 1000, padding: '20px',
+    }}>
+      <div style={{
+        background: 'white', borderRadius: '12px',
+        maxWidth: '600px', width: '100%',
+        maxHeight: '90vh', overflow: 'auto',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '24px', borderBottom: '1px solid #e5e7eb',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          position: 'sticky', top: 0, background: 'white', zIndex: 1,
+        }}>
+          <h2>{banner ? 'Редактировать баннер' : 'Создать баннер'}</h2>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '6px' }}>
+            <X size={24} />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div className="form-group">
-              <label className="form-label">Заголовок *</label>
-              <input className="form-control" name="title" value={formData.title} onChange={set} required placeholder="Скидка 50% на все витамины!" autoFocus />
-            </div>
+        <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
 
-            <div className="form-group">
-              <label className="form-label">Изображение баннера</label>
-              <BannerImageUpload
-                image={formData.image}
-                onChange={img => setFormData(p => ({ ...p, image: img }))}
-              />
-            </div>
+          {/* Заголовок */}
+          <div className="form-group">
+            <label>Заголовок *</label>
+            <input
+              type="text" name="title"
+              value={formData.title} onChange={handleChange}
+              required placeholder="Зимняя распродажа"
+              autoFocus
+            />
+          </div>
 
-            <div className="form-group">
-              <label className="form-label">Тип ссылки</label>
-              <select className="form-control" name="linkType" value={formData.linkType} onChange={set}>
-                <option value="NONE">Без ссылки</option>
-                <option value="CATEGORY">Категория</option>
-                <option value="PRODUCT">Товар</option>
-                <option value="URL">Произвольная ссылка</option>
-              </select>
-            </div>
+          {/* Подзаголовок */}
+          <div className="form-group">
+            <label>Подзаголовок</label>
+            <input
+              type="text" name="subtitle"
+              value={formData.subtitle} onChange={handleChange}
+              placeholder="Скидки до 30% на все товары"
+            />
+          </div>
 
-            {formData.linkType !== 'NONE' && (
-              <div className="form-group">
-                <label className="form-label">
-                  {formData.linkType === 'CATEGORY' && 'ID категории'}
-                  {formData.linkType === 'PRODUCT'  && 'ID товара'}
-                  {formData.linkType === 'URL'       && 'URL ссылки'}
-                </label>
-                <input
-                  className="form-control"
-                  name="linkValue"
-                  value={formData.linkValue}
-                  onChange={set}
-                  placeholder={formData.linkType === 'URL' ? '/products?sale=true' : 'uuid...'}
-                />
-              </div>
-            )}
+          {/* Изображение */}
+          <div className="form-group">
+            <label>Изображение баннера</label>
+            <BannerImageUpload
+              image={formData.image}
+              onChange={(val) => setFormData(prev => ({ ...prev, image: val }))}
+            />
+          </div>
 
-            <div className="form-group">
-              <label className="form-label">Позиция</label>
-              <input className="form-control" type="number" name="position" value={formData.position} onChange={set} min="0" />
-              <p className="form-hint">Меньшее число = выше в списке</p>
-            </div>
+          {/* Ссылка */}
+          <div className="form-group">
+            <label>Ссылка</label>
+            <input
+              type="text" name="link"
+              value={formData.link} onChange={handleChange}
+              placeholder="https://... или /products?sale=true"
+            />
+          </div>
 
-            <label className="checkbox-label">
-              <input type="checkbox" name="isActive" checked={formData.isActive} onChange={set} />
-              Активен
+          {/* Порядок отображения */}
+          <div className="form-group">
+            <label>Порядок отображения</label>
+            <input
+              type="number" name="displayOrder"
+              value={formData.displayOrder} onChange={handleChange}
+              min="0" placeholder="0"
+            />
+            <small style={{ color: '#6b7280', fontSize: '12px' }}>Меньшее число = выше в списке</small>
+          </div>
+
+          {/* Активен */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleChange} />
+              <span>Активен</span>
             </label>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>Отмена</button>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose} className="btn btn-outline" disabled={loading}>Отмена</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Сохранение...' : banner ? 'Обновить' : 'Создать'}
+              {loading ? 'Сохранение...' : (banner ? 'Обновить' : 'Создать')}
             </button>
           </div>
         </form>
