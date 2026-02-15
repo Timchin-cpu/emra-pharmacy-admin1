@@ -43,13 +43,12 @@ export default function BannerForm({ banner, onClose, onSuccess }) {
     if (activeTab === 'products' && allProducts.length === 0) {
       setProductsLoading(true)
       productsAPI.getAll()
-        .then((response) => {
-          // axios interceptor возвращает response целиком
-          const raw = response?.data ?? response
+        .then(({ data }) => {
+          // Тот же паттерн что в Products.jsx: { data } = response, потом data?.data
+          const raw = data?.data ?? data
           const list = Array.isArray(raw) ? raw
-            : Array.isArray(raw?.data) ? raw.data
-            : Array.isArray(raw?.data?.items) ? raw.data.items
             : Array.isArray(raw?.items) ? raw.items
+            : Array.isArray(raw?.products) ? raw.products
             : []
           setAllProducts(list)
         })
