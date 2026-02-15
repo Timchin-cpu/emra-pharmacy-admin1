@@ -68,6 +68,10 @@ export const bannersAPI = {
   create: (data) => api.post('/admin/banners', data),
   update: (id, data) => api.put(`/admin/banners/${id}`, data),
   delete: (id) => api.delete(`/admin/banners/${id}`),
+  // Управление товарами баннера
+  addProducts:    (id, productIds) => api.post(`/admin/banners/${id}/products`, { productIds }),
+  removeProduct:  (bannerId, productId) => api.delete(`/admin/banners/${bannerId}/products/${productId}`),
+  reorderProducts:(id, productIds) => api.put(`/admin/banners/${id}/products/reorder`, { productIds }),
 }
 
 export const settingsAPI = {
