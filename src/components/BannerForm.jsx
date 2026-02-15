@@ -43,9 +43,14 @@ export default function BannerForm({ banner, onClose, onSuccess }) {
     if (activeTab === 'products' && allProducts.length === 0) {
       setProductsLoading(true)
       productsAPI.getAll()
-        .then(({ data }) => {
-          const list = Array.isArray(data?.data) ? data.data
-            : Array.isArray(data) ? data : []
+        .then((response) => {
+          // axios interceptor возвращает response целиком
+          const raw = response?.data ?? response
+          const list = Array.isArray(raw) ? raw
+            : Array.isArray(raw?.data) ? raw.data
+            : Array.isArray(raw?.data?.items) ? raw.data.items
+            : Array.isArray(raw?.items) ? raw.items
+            : []
           setAllProducts(list)
         })
         .catch(() => toast.error('Ошибка загрузки товаров'))
